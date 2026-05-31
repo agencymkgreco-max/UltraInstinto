@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, Wallet, Target, CalendarDays, FileText, Settings, LogOut, Wifi, WifiOff } from 'lucide-react'
+import { LayoutDashboard, Wallet, Target, CalendarDays, FileText, TrendingUp, Settings, LogOut, Wifi, WifiOff } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { calculatePowerLevel, DBZ_LEVELS } from '../../lib/powerLevel'
 import { useData } from '../../hooks/useData'
@@ -8,6 +8,7 @@ const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'finances', label: 'Finanzas', icon: Wallet },
   { id: 'goals', label: 'Mis Metas', icon: Target },
+  { id: 'habits', label: 'Hábitos', icon: TrendingUp },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays },
   { id: 'notes', label: 'Notas', icon: FileText },
 ]
