@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Download } from 'lucide-react'
+import { Plus, Trash2, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Download, Edit2, Check, X } from 'lucide-react'
 import { useData } from '../../hooks/useData'
 import { useAuth } from '../../hooks/useAuth'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -7,18 +7,20 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 const CATEGORIES_GASTO = ['Comida', 'Renta', 'Transporte', 'Salud', 'Ropa', 'Entretenimiento', 'Servicios', 'Otro']
 const CATEGORIES_INGRESO = ['Salario', 'Freelance', 'Negocio', 'Inversión', 'Regalo', 'Otro']
 const ICONS = ['💳', '🏦', '💵', '💰', '🏧', '📱', '🐷']
+const TIPOS_BILLETERA = ['Efectivo', 'Cuenta Bancaria', 'Tarjeta de Crédito', 'Billetera Digital', 'Otro']
 
 export default function Finances() {
   const { user } = useAuth()
-  const { data: wallets, insert: addWallet, remove: removeWallet } = useData('wallets', user?.id)
+  const { data: wallets, insert: addWallet, update: updateWallet, remove: removeWallet } = useData('wallets', user?.id)
   const { data: transactions, insert: addTx, remove: removeTx } = useData('transactions', user?.id)
   const { data: budget, insert: addBudget, remove: removeBudget } = useData('budget_rules', user?.id)
   const [tab, setTab] = useState('resumen')
   const [txForm, setTxForm] = useState({ type: 'gasto', amount: '', category: '', description: '', source: '', wallet_id: '', date: new Date().toISOString().split('T')[0] })
-  const [walletForm, setWalletForm] = useState({ name: '', balance: '', icon: '💳' })
+  const [walletForm, setWalletForm] = useState({ name: '', balance: '', icon: '💳', tipo: 'Efectivo' })
   const [budgetForm, setBudgetForm] = useState({ name: '', percentage: '', color: '#7c3aed' })
   const [showTxForm, setShowTxForm] = useState(false)
   const [showWalletForm, setShowWalletForm] = useState(false)
+  const [editingWallet, setEditingWallet] = useState(null) // { id, balance }
 
   const totalBalance = wallets.reduce((s, w) => s + (Number(w.balance) || 0), 0)
   const totalIngresos = transactions.filter(t => t.type === 'ingreso').reduce((s, t) => s + Number(t.amount), 0)
@@ -32,17 +34,53 @@ export default function Finances() {
 
   const handleAddTx = async () => {
     if (!txForm.amount || !txForm.category) return
-    await addTx(txForm)
-    // Actualizar balance de la billetera
+    
+    // Agregar la transacción
+    await addTx({
+      ...txForm,
+      amount: Number(txForm.amount)
+    })
+
+    // Si es gasto y tiene wallet_id, restar del saldo
+    if (txForm.type === 'gasto' && txForm.wallet_id) {
+      const wallet = wallets.find(w => w.id === txForm.wallet_id)
+      if (wallet) {
+        const nuevoBalance = Number(wallet.balance) - Number(txForm.amount)
+        await updateWallet(txForm.wallet_id, { balance: nuevoBalance })
+      }
+    }
+
+    // Si es ingreso y tiene wallet_id, sumar al saldo
+    if (txForm.type === 'ingreso' && txForm.wallet_id) {
+      const wallet = wallets.find(w => w.id === txForm.wallet_id)
+      if (wallet) {
+        const nuevoBalance = Number(wallet.balance) + Number(txForm.amount)
+        await updateWallet(txForm.wallet_id, { balance: nuevoBalance })
+      }
+    }
+
     setTxForm({ type: 'gasto', amount: '', category: '', description: '', source: '', wallet_id: '', date: new Date().toISOString().split('T')[0] })
     setShowTxForm(false)
   }
 
   const handleAddWallet = async () => {
-    if (!walletForm.name) return
-    await addWallet(walletForm)
-    setWalletForm({ name: '', balance: '', icon: '💳' })
+    if (!walletForm.name || !walletForm.balance) return
+    await addWallet({
+      ...walletForm,
+      balance: Number(walletForm.balance)
+    })
+    setWalletForm({ name: '', balance: '', icon: '💳', tipo: 'Efectivo' })
     setShowWalletForm(false)
+  }
+
+  const handleEditWallet = async (walletId) => {
+    if (editingWallet.id === walletId) {
+      await updateWallet(walletId, { balance: Number(editingWallet.balance) })
+      setEditingWallet(null)
+    } else {
+      const wallet = wallets.find(w => w.id === walletId)
+      setEditingWallet({ id: walletId, balance: wallet.balance })
+    }
   }
 
   const exportData = () => {
@@ -205,15 +243,23 @@ export default function Finances() {
                   <input className="input" type="number" placeholder="0.00" value={walletForm.balance} onChange={e => setWalletForm(p => ({ ...p, balance: e.target.value }))} />
                 </div>
               </div>
-              <div className="mb-2">
-                <label className="text-xs text-secondary">Ícono</label>
-                <div className="flex gap-1" style={{ flexWrap: 'wrap', marginTop: '0.3rem' }}>
-                  {ICONS.map(icon => (
-                    <button key={icon} onClick={() => setWalletForm(p => ({ ...p, icon }))}
-                      style={{ fontSize: '1.2rem', padding: '0.3rem', borderRadius: '8px', border: `2px solid ${walletForm.icon === icon ? 'var(--accent-purple)' : 'transparent'}`, background: 'var(--bg-base)', cursor: 'pointer' }}>
-                      {icon}
-                    </button>
-                  ))}
+              <div className="grid-2 mb-1">
+                <div>
+                  <label className="text-xs text-secondary">Tipo de Billetera</label>
+                  <select className="input" value={walletForm.tipo} onChange={e => setWalletForm(p => ({ ...p, tipo: e.target.value }))}>
+                    {TIPOS_BILLETERA.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-secondary">Ícono</label>
+                  <div className="flex gap-1" style={{ flexWrap: 'wrap', marginTop: '0.3rem' }}>
+                    {ICONS.map(icon => (
+                      <button key={icon} onClick={() => setWalletForm(p => ({ ...p, icon }))}
+                        style={{ fontSize: '1.2rem', padding: '0.3rem', borderRadius: '8px', border: `2px solid ${walletForm.icon === icon ? 'var(--accent-purple)' : 'transparent'}`, background: 'var(--bg-base)', cursor: 'pointer' }}>
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-1">
@@ -224,17 +270,52 @@ export default function Finances() {
           )}
           <div className="grid-2">
             {wallets.map(w => (
-              <div key={w.id} className="card flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span style={{ fontSize: '1.8rem' }}>{w.icon}</span>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{w.name}</div>
-                    <div style={{ color: 'var(--success)', fontWeight: 700, fontSize: '1.1rem' }}>${Number(w.balance).toLocaleString('es-MX')}</div>
+              <div key={w.id} className="card">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: '1.8rem' }}>{w.icon}</span>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{w.name}</div>
+                      <div className="text-xs text-secondary">{w.tipo}</div>
+                    </div>
                   </div>
+                  <button className="btn btn-danger" style={{ padding: '0.3rem' }} onClick={() => removeWallet(w.id)}><Trash2 size={13} /></button>
                 </div>
-                <button className="btn btn-danger" style={{ padding: '0.3rem' }} onClick={() => removeWallet(w.id)}><Trash2 size={13} /></button>
+
+                {/* Editar saldo */}
+                {editingWallet?.id === w.id ? (
+                  <div className="flex gap-1 mb-2">
+                    <input 
+                      className="input" 
+                      type="number" 
+                      value={editingWallet.balance}
+                      onChange={e => setEditingWallet(p => ({ ...p, balance: e.target.value }))}
+                      style={{ flex: 1 }}
+                    />
+                    <button className="btn btn-primary" style={{ padding: '0.5rem' }} onClick={() => handleEditWallet(w.id)}>
+                      <Check size={16} />
+                    </button>
+                    <button className="btn btn-ghost" style={{ padding: '0.5rem' }} onClick={() => setEditingWallet(null)}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center">
+                    <div style={{ color: 'var(--success)', fontWeight: 700, fontSize: '1.1rem' }}>
+                      ${Number(w.balance).toLocaleString('es-MX')}
+                    </div>
+                    <button className="btn btn-ghost" style={{ padding: '0.3rem' }} onClick={() => handleEditWallet(w.id)}>
+                      <Edit2 size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
+            {wallets.length === 0 && (
+              <div className="card text-center text-secondary" style={{ gridColumn: '1/-1' }}>
+                Sin billeteras. ¡Crea una para empezar!
+              </div>
+            )}
           </div>
         </>
       )}
