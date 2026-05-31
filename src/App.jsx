@@ -6,6 +6,7 @@ import Finances from './components/finances/Finances'
 import Goals from './components/goals/Goals'
 import Agenda from './components/agenda/Agenda'
 import Notes from './components/notes/Notes'
+import Habits from './components/habits/Habits'
 import Login from './pages/Login'
 import './index.css'
 
@@ -28,6 +29,7 @@ function App() {
     dashboard: <Dashboard setPage={setPage} />,
     finances: <Finances />,
     goals: <Goals />,
+    habits: <Habits />,
     agenda: <Agenda />,
     notes: <Notes />,
   }
