@@ -73,15 +73,15 @@ export default function Finances() {
     setShowWalletForm(false)
   }
 
-  const handleEditWallet = async (walletId) => {
-    if (editingWallet.id === walletId) {
-      await updateWallet(walletId, { balance: Number(editingWallet.balance) })
-      setEditingWallet(null)
-    } else {
-      const wallet = wallets.find(w => w.id === walletId)
-      setEditingWallet({ id: walletId, balance: wallet.balance })
-    }
+ const handleEditWallet = async (walletId) => {
+  if (editingWallet?.id === walletId) {
+    await updateWallet(walletId, { balance: Number(editingWallet.balance) })
+    setEditingWallet(null)
+  } else {
+    const wallet = wallets.find(w => w.id === walletId)
+    setEditingWallet({ id: walletId, balance: wallet.balance })
   }
+}
 
   const exportData = () => {
     const data = { wallets, transactions, budget, exportDate: new Date().toISOString() }
