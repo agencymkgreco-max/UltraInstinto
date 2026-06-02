@@ -354,9 +354,9 @@ export default function Finances() {
                   <div className="power-bar-track">
                     <div className="power-bar-fill" style={{ width: `${b.percentage}%`, background: b.color || 'var(--accent-purple)' }} />
                   </div>
-                  {totalIngresos > 0 && <div className="text-xs text-secondary mt-1">
-                    = ${((totalIngresos * b.percentage) / 100).toLocaleString('es-MX')} de tus ingresos
-                  </div>}
+                {totalIngresos > 0 && <div className="text-xs text-secondary mt-1">
+  = ${((totalIngresos * b.percentage) / 100).toLocaleString('es-MX')} de tus ingresos
+</div>}
                 </div>
                 <button className="btn btn-danger" style={{ padding: '0.3rem', marginLeft: '1rem' }} onClick={() => removeBudget(b.id)}><Trash2 size={13} /></button>
               </div>
